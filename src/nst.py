@@ -91,25 +91,18 @@ def get_content_loss(target, content):
     """
     return (0.5 * torch.mean((target - content)**2))
 
-# style loss function
-# equivalent to computing the maximum mean discrepancy between two images
 def get_style_loss(target, style):
-    _, c, h, w = target.size()
-
-    # calculate Gram matrix for target image
+    """
+    style loss = equivalent to computing the maximum mean discrepancy between two images
+    """ 
     G = gram_matrix(target)
-
-    # calculate Gram matrix for style image
     S = gram_matrix(style)
-
     return torch.mean((G - S)**2)
 
-
-
-# gram matrix is calculated for every layer
 def gram_matrix(input):
     """
     Compute the Gram matrix for each layer
+    gram matrix is calculated for every layer
 
     G_ij = sum(F_ik * F_jk, k)
     """
@@ -144,16 +137,17 @@ def main():
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-        steps = 2000
+        steps = 1000
         alpha = 1 # content weight
         beta = 1e7 #style weight
-        gamma = 1e5 # color preservation weight
-        color_control = 0.8 # how much to preserve content colors, 0-1
+        gamma = 1e3 # color preservation weight
+        color_control = 0.7 # how much to preserve content colors, 0-1
 
-        content_img = load_img('images/input/input.jpg', loader).to(device)
-        style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
+        # content_img = load_img('images/input/input.jpg', loader).to(device)
+        content_img = load_img('images/input/me-catten-cropped.jpg', loader).to(device)
+        # style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
         # style_img = load_img('images/art/vangogh/farmhouse_in_provence_1970.17.34.jpg', loader).to(device)
-        # style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
+        style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
 
         # initialize output to be a random noise image
         # target_img = torch.randn_like(content_img).to(device).requires_grad_(True)
@@ -197,7 +191,7 @@ def main():
 
             return total_loss
 
-        for _ in range(1000):
+        for _ in range(steps):
             optimizer.step(closure)
         
         save(target_img, "final")
