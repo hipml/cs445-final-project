@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import LBFGS 
 
@@ -7,6 +8,9 @@ import torchvision.models as models
 from torchvision.models import VGG19_Weights
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
+
+import cv2
+import numpy as np
 
 from tqdm import tqdm
 from PIL import Image
@@ -27,6 +31,56 @@ class VGG(nn.Module):
             if name in self.select_features:
                 features.append(output)
         return features
+
+def tensor_to_cv2(tensor):
+    """Convert normalized PyTorch tensor to cv2 BGR format"""
+
+    # denormalize
+    denorm = transforms.Normalize((-2.12, -2.04, -1.80), (4.37, 4.46, 4.44))
+    rgb = denorm(tensor.squeeze()).clamp(0, 1)
+    
+    # convert to numpy and correct format
+    np_img = (rgb.detach().cpu().numpy().transpose(1, 2, 0) * 255).astype(np.uint8)
+    # convert RGB to BGR
+    return cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR)
+
+def cv2_to_tensor(img, device):
+    """Convert cv2 BGR image back to normalized PyTorch tensor"""
+
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    rgb = rgb.astype(np.float32) / 255.0
+
+    tensor = torch.from_numpy(rgb.transpose(2, 0, 1)).to(device)
+    norm = transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
+    return norm(tensor).unsqueeze(0)
+
+def get_color_preservation_loss(target, content, color_weight):
+    """
+    Calculate color preservation loss using LAB color space with cv2
+    """
+    target_bgr = tensor_to_cv2(target)
+    content_bgr = tensor_to_cv2(content)
+    
+    # convert to LAB
+    target_lab = cv2.cvtColor(target_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    content_lab = cv2.cvtColor(content_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    
+    # normalize LAB values, L to [0, 1] and A,B to [-1, 1]
+    target_lab[:,:,0] = target_lab[:,:,0] / 100.0
+    content_lab[:,:,0] = content_lab[:,:,0] / 100.0
+    target_lab[:,:,1:] = target_lab[:,:,1:] / 127.0
+    content_lab[:,:,1:] = content_lab[:,:,1:] / 127.0
+    
+    # only compare a and b channels
+    target_ab = torch.from_numpy(target_lab[:,:,1:]).to(target.device)
+    content_ab = torch.from_numpy(content_lab[:,:,1:]).to(content.device)
+
+    # color_diff = torch.abs(target_ab - content_ab)
+    # loss = color_weight * torch.mean(color_diff ** 4)
+
+    loss = color_weight * F.mse_loss(target_ab, content_ab)
+    return loss
 
 # content loss function
 def get_content_loss(target, content):
@@ -93,11 +147,12 @@ def main():
         steps = 2000
         alpha = 1 # content weight
         beta = 1e7 #style weight
+        gamma = 1e5 # color preservation weight
+        color_control = 0.8 # how much to preserve content colors, 0-1
 
-        #content_img = load_img('images/input/chimi.jpg', loader).to(device)
         content_img = load_img('images/input/input.jpg', loader).to(device)
-        # style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
-        style_img = load_img('images/art/vangogh/farmhouse_in_provence_1970.17.34.jpg', loader).to(device)
+        style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
+        # style_img = load_img('images/art/vangogh/farmhouse_in_provence_1970.17.34.jpg', loader).to(device)
         # style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
 
         # initialize output to be a random noise image
@@ -124,8 +179,11 @@ def main():
                 content_loss += get_content_loss(target, content)
                 style_loss += get_style_loss(target, style)
 
+            color_loss = get_color_preservation_loss(target_img, content_img, color_control)
+
             # calculate total loss according to paper
-            total_loss = alpha * content_loss + beta * style_loss
+            # adding a color retaining weight
+            total_loss = alpha * content_loss + beta * style_loss + gamma * color_loss
 
             # set parameters to zero, compute gradient, update parameters
             total_loss.backward()
