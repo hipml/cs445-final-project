@@ -20,8 +20,8 @@ pip install -r requirements.txt
 ```python src/nst.py```
 
 ### CycleGAN
-To train: ```python project.py --train --style_dir "images/art/vangogh/" --epochs 100 --batch_size 1 --lr 0.0002```  
-Inference: ```python project.py --input_image "images/input/input.jpg" --output_image "images/output/styled_vangogh.jpg"```
+To train: ```python src/project.py --train --style_dir "images/art/vangogh/" --epochs 100 --batch_size 1 --lr 0.0002```  
+Inference: ```python src/project.py --input_image "images/input/dummy_class/input.jpg" --output_image "images/output/styled_vangogh.jpg"```
 ### Other implementation
 
 

@@ -122,7 +122,7 @@ def main(args):
 
         input_image = load_image(input_image_path, transform).to(device)
         G = Generator().to(device)
-        G.load_state_dict(torch.load('path_to_G.pth', map_location=device))
+        G.load_state_dict(torch.load('checkpoints/G_epoch_100.pth', map_location=device, weights_only=False))
         G.eval()
 
         with torch.no_grad():
