@@ -16,6 +16,14 @@ python3 -m venv myenv
 source myenv/bin/activate  
 pip install -r requirements.txt
 ```
+### Neural Style Transfer
+```python src/nst.py```
+
+### CycleGAN
+To train: ```python project.py --train --style_dir "images/art/vangogh/" --epochs 100 --batch_size 1 --lr 0.0002```  
+Inference: ```python project.py --input_image "images/input/input.jpg" --output_image "images/output/styled_vangogh.jpg"```
+### Other implementation
+
 
 ## Sources
 

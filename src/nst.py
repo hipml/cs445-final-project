@@ -121,7 +121,7 @@ def save(target, i):
     denorm = transforms.Normalize((-2.12, -2.04, -1.80), (4.37, 4.46, 4.44))
     img = target.clone().squeeze()
     img = denorm(img).clamp(0, 1)
-    save_image(img, f'result_{i}.png')
+    save_image(img, f'output/result_{i}.png')
 
 def main():
     try:
@@ -140,14 +140,14 @@ def main():
         steps = 1000
         alpha = 1 # content weight
         beta = 1e7 #style weight
-        gamma = 1e3 # color preservation weight
+        gamma = 1e5 # color preservation weight
         color_control = 0.7 # how much to preserve content colors, 0-1
 
         # content_img = load_img('images/input/input.jpg', loader).to(device)
         content_img = load_img('images/input/me-catten-cropped.jpg', loader).to(device)
-        # style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
+        style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
         # style_img = load_img('images/art/vangogh/farmhouse_in_provence_1970.17.34.jpg', loader).to(device)
-        style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
+        # style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
 
         # initialize output to be a random noise image
         # target_img = torch.randn_like(content_img).to(device).requires_grad_(True)
@@ -177,7 +177,7 @@ def main():
 
             # calculate total loss according to paper
             # adding a color retaining weight
-            total_loss = alpha * content_loss + beta * style_loss + gamma * color_loss
+            total_loss = alpha * content_loss + beta * style_loss # + gamma * color_loss
 
             # set parameters to zero, compute gradient, update parameters
             total_loss.backward()
