@@ -12,7 +12,9 @@ from torchvision.utils import save_image
 import cv2
 import numpy as np
 
+import argparse
 from tqdm import tqdm
+from pathlib import Path
 from PIL import Image
 
 class VGG(nn.Module):
@@ -118,12 +120,25 @@ def load_img(path, loader):
     return img
 
 def save(target, i):
+    output_dir = Path('output')
+    output_dir.mkdir(exist_ok=True)
+    
     denorm = transforms.Normalize((-2.12, -2.04, -1.80), (4.37, 4.46, 4.44))
     img = target.clone().squeeze()
     img = denorm(img).clamp(0, 1)
-    save_image(img, f'output/result_{i}.png')
+    save_image(img, output_dir / f'result_{i}.png')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Style Transfer Parameters')
+    parser.add_argument('--input', default='images/input/hawaii.JPG', help='Path to input image')
+    parser.add_argument('--style', default='images/art/starry_night.jpg', help='Path to style image')
+    parser.add_argument('--gamma', type=float, default=1e5, help='Gamma parameter (default: 1e5)')
+    parser.add_argument('--color_control', type=float, default=0.7, help='Color control parameter (default: 0.7)')
+    
+    return parser.parse_args()
 
 def main():
+    args = parse_arguments()
     try:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         vgg = VGG().to(device).eval()
@@ -140,14 +155,11 @@ def main():
         steps = 1000
         alpha = 1 # content weight
         beta = 1e7 #style weight
-        gamma = 1e5 # color preservation weight
-        color_control = 0.7 # how much to preserve content colors, 0-1
+        gamma = args.gamma # color preservation weight
+        color_control = args.color_control # how much to preserve content colors, 0-1
 
-        # content_img = load_img('images/input/input.jpg', loader).to(device)
-        content_img = load_img('images/input/me-catten-cropped.jpg', loader).to(device)
-        style_img = load_img('images/art/vangogh/self-portrait_1998.74.5.jpg', loader).to(device)
-        # style_img = load_img('images/art/vangogh/farmhouse_in_provence_1970.17.34.jpg', loader).to(device)
-        # style_img = load_img('images/art/monet/banks_of_the_seine,_vetheuil_1963.10.177.jpg', loader).to(device)
+        content_img = load_img(args.input, loader).to(device)
+        style_img = load_img(args.style, loader).to(device)
 
         # initialize output to be a random noise image
         # target_img = torch.randn_like(content_img).to(device).requires_grad_(True)
